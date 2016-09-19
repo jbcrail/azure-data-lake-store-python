@@ -17,6 +17,7 @@ Only implements upload and download of (massive) files and directory trees.
 import glob
 import logging
 import os
+import time
 
 from .core import AzureDLPath
 from .transfer import ADLTransferClient
@@ -152,28 +153,40 @@ class ADLDownloader(object):
     __repr__ = __str__
 
 
+def pinfo(*args):
+    logger.info(' '.join(['{}'] * len(args)).format(*args))
+
+
 def get_chunk(adlfs, src, dst, offset, size, blocksize, shutdown_event=None):
     """ Download a piece of a remote file and write locally
 
     Internal function used by `download`.
     """
     nbytes = 0
+    task = tokenize(src, dst, offset, size, blocksize)
     try:
+        pinfo(task, 'open:remote', time.time())
         with adlfs.open(src, 'rb') as fin:
             end = offset + size
             miniblock = min(size, blocksize)
+            pinfo(task, 'open:local', time.time())
             with open(dst, 'rb+') as fout:
+                pinfo(task, 'seek:local', time.time())
                 fout.seek(offset)
+                pinfo(task, 'seek:remote', time.time())
                 fin.seek(offset)
                 for o in range(offset, end, miniblock):
                     if shutdown_event and shutdown_event.is_set():
                         return nbytes, None
+                    pinfo(task, 'read', time.time())
                     data = fin.read(miniblock)
+                    pinfo(task, 'write', time.time())
                     nbytes += fout.write(data)
     except Exception as e:
         exception = repr(e)
         logger.debug('Download failed %s; %s', dst, exception)
         return nbytes, exception
+    pinfo(task, 'close', time.time())
     logger.debug('Downloaded to %s, byte offset %s', dst, offset)
     return nbytes, None
 
@@ -300,20 +313,26 @@ def put_chunk(adlfs, src, dst, offset, size, blocksize, delimiter=None,
     Internal function used by `upload`.
     """
     nbytes = 0
+    task = tokenize(src, dst, offset, size, blocksize)
     try:
+        pinfo(task, 'open:remote', time.time())
         with adlfs.open(dst, 'wb', delimiter=delimiter) as fout:
             end = offset + size
             miniblock = min(size, blocksize)
+            pinfo(task, 'open:local', time.time())
             with open(src, 'rb') as fin:
                 for o in range(offset, end, miniblock):
                     if shutdown_event and shutdown_event.is_set():
                         return nbytes, None
+                    pinfo(task, 'read', time.time())
                     data = read_block(fin, o, miniblock, delimiter)
+                    pinfo(task, 'write', time.time())
                     nbytes += fout.write(data)
     except Exception as e:
         exception = repr(e)
         logger.debug('Upload failed %s; %s', src, exception)
         return nbytes, exception
+    pinfo(task, 'close', time.time())
     logger.debug('Uploaded from %s, byte offset %s', src, offset)
     return nbytes, None
 
