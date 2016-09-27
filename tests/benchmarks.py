@@ -63,21 +63,21 @@ def du(path):
     return size
 
 
-def verify(adl, progress, lfile, rfile):
+def verify(loader):
     """ Confirm whether target file matches source file """
-    print("local file      :", lfile)
-    if os.path.exists(lfile):
-        print("local file size :", du(lfile))
+    print("local file      :", loader.lpath)
+    if os.path.exists(loader.lpath):
+        print("local file size :", du(loader.lpath))
     else:
         print("local file size :", None)
 
-    print("remote file     :", rfile)
-    if adl.exists(rfile):
-        print("remote file size:", adl.du(rfile, total=True, deep=True))
+    print("remote file     :", loader.rpath)
+    if adl.exists(loader.rpath):
+        print("remote file size:", adl.du(loader.rpath, total=True, deep=True))
     else:
         print("remote file size:", None)
 
-    for f in progress:
+    for f in loader.diagnostics.files:
         chunks_finished = 0
         for chunk in f.chunks:
             if chunk.state == 'finished':
@@ -105,7 +105,7 @@ def bench_upload_1_50gb(adl, lpath, rpath, nthreads):
         rpath=rpath,
         nthreads=nthreads)
 
-    verify(adl, up.client.progress, lpath, rpath)
+    verify(up)
 
 
 @benchmark
@@ -116,7 +116,7 @@ def bench_upload_50_1gb(adl, lpath, rpath, nthreads):
         rpath=rpath,
         nthreads=nthreads)
 
-    verify(adl, up.client.progress, lpath, rpath)
+    verify(up)
 
 
 @benchmark
@@ -127,7 +127,7 @@ def bench_download_1_50gb(adl, lpath, rpath, nthreads):
         rpath=rpath,
         nthreads=nthreads)
 
-    verify(adl, down.client.progress, lpath, rpath)
+    verify(down)
 
 
 @benchmark
@@ -138,7 +138,7 @@ def bench_download_50_1gb(adl, lpath, rpath, nthreads):
         rpath=rpath,
         nthreads=nthreads)
 
-    verify(adl, down.client.progress, lpath, rpath)
+    verify(down)
 
 
 if __name__ == '__main__':
