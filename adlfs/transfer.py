@@ -294,18 +294,18 @@ class ADLTransferClient(object):
         """ Check pre-conditions before starting file transfer """
         for pre in self.preconditions:
             if not pre(self._adlfs, src, dst):
-                logger.error("")
+                logger.error("Chunk pre-condition failed: %s", pre.__name__)
                 return False
-        logger.debug("")
+        logger.debug("Chunk pre-conditions passed")
         return True
 
     def _finalize(self, src, dst):
         """ Check post-conditions after completing file transfer """
         for post in self.postconditions:
             if not post(self._adlfs, src, dst):
-                logger.error("")
+                logger.error("Chunk post-condition failed: %s", post.__name__)
                 return False
-        logger.debug("")
+        logger.debug("Chunk post-conditions passed")
         return True
 
     def _start(self, src, dst):
@@ -367,7 +367,6 @@ class ADLTransferClient(object):
                     cstates[obj] = 'finished'
 
             if cstates.contains_all('finished'):
-                logger.debug("Chunks transferred")
                 src, dst = parent
                 if self._merge and len(cstates.objects) > 1:
                     logger.debug("Merging file: %s", self._fstates[parent])
@@ -378,10 +377,10 @@ class ADLTransferClient(object):
                                                     key=lambda obj: obj[1])])
                     self._ffutures[merge_future] = parent
                 elif not self._finalize(src, dst):
-                    pass
+                    self._fstates[parent] = 'errored'
                 else:
-                    self._fstates[parent] = 'finished'
                     logger.info("Transferred %s -> %s", src, dst)
+                    self._fstates[parent] = 'finished'
             elif cstates.contains_none('running'):
                 logger.debug("Transfer failed: %s", cstates)
                 self._fstates[parent] = 'errored'
@@ -394,15 +393,15 @@ class ADLTransferClient(object):
                 self._files[(src, dst)]['exception'] = repr(future.exception())
                 self._fstates[(src, dst)] = 'errored'
             elif not self._finalize(src, dst):
-                pass
+                self._fstates[(src, dst)] = 'errored'
             else:
                 exception = future.result()
                 self._files[(src, dst)]['exception'] = exception
                 if exception:
                     self._fstates[(src, dst)] = 'errored'
                 else:
-                    self._fstates[(src, dst)] = 'finished'
                     logger.info("Transferred %s -> %s", src, dst)
+                    self._fstates[(src, dst)] = 'finished'
         self.save()
 
     def run(self, nthreads=None, monitor=True):

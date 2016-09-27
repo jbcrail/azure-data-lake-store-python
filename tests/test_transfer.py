@@ -17,7 +17,7 @@ from tests.testing import azure, posix
 
 @pytest.mark.skipif(True, reason="skip until resolve timing issue")
 def test_interrupt(azure):
-    def transfer(adlfs, src, dst, offset, size, shutdown_event=None):
+    def transfer(adlfs, src, dst, offset, size, blocksize, shutdown_event=None):
         while shutdown_event and not shutdown_event.is_set():
             time.sleep(0.1)
         return size, None
@@ -34,7 +34,7 @@ def test_interrupt(azure):
 
 
 def test_submit_and_run(azure):
-    def transfer(adlfs, src, dst, offset, size, shutdown_event=None):
+    def transfer(adlfs, src, dst, offset, size, blocksize, shutdown_event=None):
         time.sleep(0.1)
         return size, None
 
@@ -56,7 +56,8 @@ def test_submit_and_run(azure):
     assert {(chunk.name, chunk.offset) for f in client.progress
                                        for chunk in f.chunks} == expected
 
-    client.run()
+    client.run(monitor=False)
+    client.monitor(timeout=2.0)
 
     assert all([client.progress[i].state == 'finished' for i in range(nfiles)])
     assert all([chunk.state == 'finished' for f in client.progress
@@ -66,7 +67,7 @@ def test_submit_and_run(azure):
 
 
 def test_temporary_path(azure):
-    def transfer(adlfs, src, dst, offset, size):
+    def transfer(adlfs, src, dst, offset, size, blocksize, shutdown_event=None):
         time.sleep(0.1)
         return size, None
 
