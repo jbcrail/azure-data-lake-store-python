@@ -407,9 +407,10 @@ class ADLTransferClient(object):
     def run(self, nthreads=None, monitor=True):
         self._nthreads = nthreads or self._nthreads
         for src, dst in self._files:
-            if not self._initialize(src, dst):
-                pass
-            self._start(src, dst)
+            if self._initialize(src, dst):
+                self._start(src, dst)
+            else:
+                self._fstates[(src, dst)] = 'errored'
         if monitor:
             self.monitor()
 
