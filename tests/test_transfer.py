@@ -17,7 +17,7 @@ from tests.testing import azure, posix
 
 @pytest.mark.skipif(True, reason="skip until resolve timing issue")
 def test_interrupt(azure):
-    def transfer(adlfs, src, dst, offset, size, retries=5, shutdown_event=None):
+    def transfer(adlfs, src, dst, offset, size, shutdown_event=None):
         while shutdown_event and not shutdown_event.is_set():
             time.sleep(0.1)
         return size, None
@@ -34,7 +34,7 @@ def test_interrupt(azure):
 
 
 def test_submit_and_run(azure):
-    def transfer(adlfs, src, dst, offset, size, retries=5, shutdown_event=None):
+    def transfer(adlfs, src, dst, offset, size, shutdown_event=None):
         time.sleep(0.1)
         return size, None
 
