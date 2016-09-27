@@ -235,6 +235,8 @@ class ADLTransferClient(object):
         self._persist_path = persist_path
         self._pool = ThreadPoolExecutor(self._nthreads)
         self._shutdown_event = threading.Event()
+        self.preconditions = []
+        self.postconditions = []
 
         # Internal state tracking files/chunks/futures
         self._files = {}
@@ -292,6 +294,24 @@ class ADLTransferClient(object):
         future = self._pool.submit(fn, *args, **kwargs)
         future.add_done_callback(self._update)
         return future
+
+    def _initialize(self, src, dst):
+        """ Check pre-conditions before starting file transfer """
+        for pre in self.preconditions:
+            if not pre(self._adlfs, src, dst):
+                logger.error("")
+                return False
+        logger.debug("")
+        return True
+
+    def _finalize(self, src, dst):
+        """ Check post-conditions after completing file transfer """
+        for post in self.postconditions:
+            if not post(self._adlfs, src, dst):
+                logger.error("")
+                return False
+        logger.debug("")
+        return True
 
     def _start(self, src, dst):
         key = (src, dst)
@@ -366,6 +386,8 @@ class ADLTransferClient(object):
                         [name for name, _ in sorted(cstates.objects,
                                                     key=lambda obj: obj[1])])
                     self._ffutures[merge_future] = parent
+                elif not self._finalize(src, dst):
+                    pass
                 else:
                     self._fstates[parent] = 'finished'
                     self._files[parent]['stop'] = time.time()
@@ -381,6 +403,8 @@ class ADLTransferClient(object):
             elif future.exception():
                 self._files[(src, dst)]['exception'] = repr(future.exception())
                 self._fstates[(src, dst)] = 'errored'
+            elif not self._finalize(src, dst):
+                pass
             else:
                 exception = future.result()
                 self._files[(src, dst)]['exception'] = exception
@@ -392,11 +416,11 @@ class ADLTransferClient(object):
                     logger.info("Transferred %s -> %s", src, dst)
         self.save()
 
-    def run(self, nthreads=None, monitor=True, before_start=None):
+    def run(self, nthreads=None, monitor=True):
         self._nthreads = nthreads or self._nthreads
         for src, dst in self._files:
-            if before_start:
-                before_start(self._adlfs, src, dst)
+            if not self._initialize(src, dst):
+                pass
             self._start(src, dst)
         if monitor:
             self.monitor()
@@ -435,6 +459,8 @@ class ADLTransferClient(object):
         dic2.pop('_merge', None)
         dic2.pop('_pool', None)
         dic2.pop('_shutdown_event', None)
+        dic2.pop('preconditions', None)
+        dic2.pop('postconditions', None)
 
         dic2['_files'] = dic2.get('_files', {}).copy()
         dic2['_chunks'] = dic2.get('_chunks', {}).copy()

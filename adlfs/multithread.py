@@ -123,9 +123,9 @@ class ADLDownloader(object):
             should be called manually, otherwise process runs as "fire and
             forget".
         """
-        def touch(self, src, dst):
+        def initialize(adlfs, src, dst):
             root = os.path.dirname(dst)
-            if not os.path.exists(root) and root:
+            if root and not os.path.exists(root):
                 # don't attempt to create current directory
                 logger.debug('Creating directory %s', root)
                 os.makedirs(root)
@@ -133,7 +133,8 @@ class ADLDownloader(object):
             with open(dst, 'wb'):
                 pass
 
-        self.client.run(nthreads, monitor, before_start=touch)
+        self.client.preconditions.append(initialize)
+        self.client.run(nthreads, monitor)
 
     @staticmethod
     def load():
@@ -274,6 +275,25 @@ class ADLUploader(object):
             self.client.submit(lfile, rfile, fsize)
 
     def run(self, nthreads=None, monitor=True):
+        """ Populate transfer queue and execute uploads
+
+        Parameters
+        ----------
+        nthreads: int [None]
+            Override default nthreads, if given
+        monitor: bool [True]
+            To watch and wait (block) until completion. If False, `update()`
+            should be called manually, otherwise process runs as "fire and
+            forget".
+        """
+        def initialize(adlfs, src, dst):
+            root = dst.parent
+            if root and not adlfs.exists(root):
+                # don't attempt to create current directory
+                logger.debug('Creating directory %s', root)
+                adlfs.mkdir(root)
+
+        self.client.preconditions.append(initialize)
         self.client.run(nthreads, monitor)
 
     @staticmethod
