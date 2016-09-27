@@ -102,6 +102,7 @@ class StateManager(object):
 
 
 # Named tuples used to serialize client progress
+Diagnostics = namedtuple('Diagnostics', 'successful files')
 File = namedtuple('File', 'src dst state length chunks exception')
 Chunk = namedtuple('Chunk', 'name state offset expected actual exception')
 
@@ -342,7 +343,9 @@ class ADLTransferClient(object):
                 length=self._files[key]['length'],
                 chunks=chunks,
                 exception=self._files[key]['exception']))
-        return files
+        return Diagnostics(
+            successful=all([f.state == 'finished' for f in files]),
+            files=files)
 
     def _update(self, future):
         if future in self._cfutures:

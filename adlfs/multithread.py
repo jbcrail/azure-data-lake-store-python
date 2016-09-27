@@ -89,6 +89,10 @@ class ADLDownloader(object):
     def hash(self):
         return self.client._name
 
+    @property
+    def diagnostics(self):
+        return self.client.progress
+
     def _setup(self):
         """ Create set of parameters to loop over
         """
@@ -148,9 +152,9 @@ class ADLDownloader(object):
         self.client.save(keep)
 
     def __str__(self):
-        progress = self.client.progress
-        nchunks_orig = sum([1 for f in progress for chunk in f.chunks])
-        nchunks = sum([1 for f in progress for chunk in f.chunks if chunk.state != 'finished'])
+        files = self.client.progress.files
+        nchunks_orig = sum([1 for f in files for chunk in f.chunks])
+        nchunks = sum([1 for f in files for chunk in f.chunks if chunk.state != 'finished'])
         return "<ADL Download: %s -> %s (%s of %s chunks remain)>" % (
             self.rpath, self.lpath, nchunks, nchunks_orig)
 
@@ -251,6 +255,10 @@ class ADLUploader(object):
     def hash(self):
         return self.client._name
 
+    @property
+    def diagnostics(self):
+        return self.client.progress
+
     def _setup(self):
         """ Create set of parameters to loop over
         """
@@ -313,9 +321,9 @@ class ADLUploader(object):
         self.client.save(keep)
 
     def __str__(self):
-        progress = self.client.progress
-        nchunks_orig = sum([1 for f in progress for chunk in f.chunks])
-        nchunks = sum([1 for f in progress for chunk in f.chunks if chunk.state != 'finished'])
+        files = self.client.progress.files
+        nchunks_orig = sum([1 for f in files for chunk in f.chunks])
+        nchunks = sum([1 for f in files for chunk in f.chunks if chunk.state != 'finished'])
         return "<ADL Upload: %s -> %s (%s of %s chunks remain)>" % (
             self.lpath, self.rpath, nchunks, nchunks_orig)
 

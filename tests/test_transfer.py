@@ -30,7 +30,7 @@ def test_interrupt(azure):
     client.shutdown()
     client.monitor()
 
-    assert client.progress[0].state != 'finished'
+    assert client.progress.successful
 
 
 def test_submit_and_run(azure):
@@ -44,25 +44,24 @@ def test_submit_and_run(azure):
     client.submit('foo', 'bar', 16)
     client.submit('abc', '123', 8)
 
-    nfiles = len(client.progress)
-    assert nfiles == 2
-    assert len([client.progress[i].chunks for i in range(nfiles)])
+    assert len(client.progress.files) == 2
+    assert len([f.chunks for f in client.progress.files])
 
-    assert all([client.progress[i].state == 'pending' for i in range(nfiles)])
-    assert all([chunk.state == 'pending' for f in client.progress
+    assert all([f.state == 'pending' for f in client.progress.files])
+    assert all([chunk.state == 'pending' for f in client.progress.files
                                          for chunk in f.chunks])
 
     expected = {('bar', 0), ('bar', 8), ('123', 0)}
-    assert {(chunk.name, chunk.offset) for f in client.progress
+    assert {(chunk.name, chunk.offset) for f in client.progress.files
                                        for chunk in f.chunks} == expected
 
     client.run(monitor=False)
     client.monitor(timeout=2.0)
 
-    assert all([client.progress[i].state == 'finished' for i in range(nfiles)])
-    assert all([chunk.state == 'finished' for f in client.progress
+    assert client.progress.successful
+    assert all([chunk.state == 'finished' for f in client.progress.files
                                           for chunk in f.chunks])
-    assert all([chunk.expected == chunk.actual for f in client.progress
+    assert all([chunk.expected == chunk.actual for f in client.progress.files
                                                for chunk in f.chunks])
 
 
@@ -75,4 +74,4 @@ def test_temporary_path(azure):
                                tmp_unique=False)
     client.submit('foo', AzureDLPath('bar'), 16)
 
-    assert os.path.dirname(posix(client.progress[0].chunks[0].name)) == '/tmp'
+    assert os.path.dirname(posix(client.progress.files[0].chunks[0].name)) == '/tmp'
