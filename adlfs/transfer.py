@@ -354,17 +354,24 @@ class ADLTransferClient(object):
             cstates = self._files[parent]['cstates']
 
             if future.cancelled():
+                logger.error("Chunk transfer cancelled")
                 cstates[obj] = 'cancelled'
             elif future.exception():
-                self._chunks[obj]['exception'] = repr(future.exception())
+                exception = repr(future.exception())
+                self._chunks[obj]['exception'] = exception
+                logger.error("Chunk transfer failed: %s", exception)
                 cstates[obj] = 'errored'
             else:
                 nbytes, exception = future.result()
                 self._chunks[obj]['actual'] = nbytes
                 self._chunks[obj]['exception'] = exception
                 if exception:
+                    logger.error("Chunk transfer failed: %s", exception)
                     cstates[obj] = 'errored'
                 elif self._chunks[obj]['expected'] != nbytes:
+                    logger.error(
+                        "Chunk transfer failed: expected %d bytes, transferred %d bytes",
+                        self._chunks[obj]['expected'], nbytes)
                     cstates[obj] = 'errored'
                 else:
                     cstates[obj] = 'finished'
@@ -385,7 +392,7 @@ class ADLTransferClient(object):
                     logger.info("Transferred %s -> %s", src, dst)
                     self._fstates[parent] = 'finished'
             elif cstates.contains_none('running'):
-                logger.debug("Transfer failed: %s", cstates)
+                logger.error("Transfer failed: %s", cstates)
                 self._fstates[parent] = 'errored'
         elif future in self._ffutures:
             src, dst = self._ffutures[future]
@@ -393,14 +400,17 @@ class ADLTransferClient(object):
             if future.cancelled():
                 self._fstates[(src, dst)] = 'cancelled'
             elif future.exception():
-                self._files[(src, dst)]['exception'] = repr(future.exception())
+                exception = repr(future.exception())
+                self._files[(src, dst)]['exception'] = exception
                 self._fstates[(src, dst)] = 'errored'
+                logger.error("Merge failed: %s", exception)
             elif not self._finalize(src, dst):
                 self._fstates[(src, dst)] = 'errored'
             else:
                 exception = future.result()
                 self._files[(src, dst)]['exception'] = exception
                 if exception:
+                    logger.error("Merge failed: %s", exception)
                     self._fstates[(src, dst)] = 'errored'
                 else:
                     logger.info("Transferred %s -> %s", src, dst)

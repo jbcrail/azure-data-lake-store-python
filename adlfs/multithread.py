@@ -91,6 +91,7 @@ class ADLDownloader(object):
 
     @property
     def diagnostics(self):
+        """ Get information about file/chunk status and metadata """
         return self.client.progress
 
     def _setup(self):
@@ -257,6 +258,7 @@ class ADLUploader(object):
 
     @property
     def diagnostics(self):
+        """ Get information about file/chunk status and metadata """
         return self.client.progress
 
     def _setup(self):
