@@ -135,6 +135,7 @@ class ADLDownloader(object):
             logger.debug('Creating empty file %s', dst)
             with open(dst, 'wb'):
                 pass
+            return True
 
         self.client.preconditions.append(initialize)
         self.client.run(nthreads, monitor)
@@ -299,6 +300,7 @@ class ADLUploader(object):
                 # don't attempt to create current directory
                 logger.debug('Creating directory %s', root)
                 adlfs.mkdir(root)
+            return True
 
         self.client.preconditions.append(initialize)
         self.client.run(nthreads, monitor)
